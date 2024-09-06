@@ -3,7 +3,9 @@ import db from "../../../config/db_connection"; // Fixed typo 'cofig' to 'config
 import {
   generateSecret,
   verifyToken,
-  otpauthURL,
+  generateQRCode,
+  verifyQRToken,
+  extractSecretFromOtpauthUrl,
 } from "../services/otpService";
 import {
   hashPassword,
@@ -15,6 +17,13 @@ import { sendAdminRegistrationEmail } from "../mail/registrationMail";
 import { sendTwoFactorSetupEmail } from "../mail/twoFactorMail";
 import { toDataURL } from "qrcode";
 import QRCode from "qrcode";
+import AWS from "aws-sdk";
+
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
+});
 
 export const registerAdmin = async (
   req: Request,
@@ -42,6 +51,36 @@ export const registerAdmin = async (
     // Hash the password
     const hashedPassword = await hashPassword(password);
     const secret = generateSecret();
+    // const otpauthUrl = secret.otpauth_url;
+
+    console.log(secret.otpauth_url);
+
+    // Generate QR code Data URL
+    const dataUrl = await generateQRCode(secret.otpauth_url);
+
+    // Extract base64 data
+    const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+
+    // Define S3 upload parameters
+    const uploadParams = {
+      Bucket: process.env.AWS_S3_BUCKET_NAME as string, // Ensure this environment variable is set
+      Key: `qr-codes/${email}-${Date.now()}.png`,
+      Body: Buffer.from(base64Data, "base64"),
+      ContentEncoding: "base64",
+      ContentType: "image/png",
+    };
+
+    // Log the upload parameters for debugging
+    // console.log("S3 upload parameters:", uploadParams);
+
+    // Upload to S3
+    const s3Response = await s3.upload(uploadParams).promise();
+
+    // Extract the URL of the uploaded image
+    const qrCodeUrl = s3Response.Location;
+
+    // Log the QR code URL for debugging
+    // console.log("QR Code URL:", qrCodeUrl);
 
     // Create a new user
     const admin = await db.Admin.create({
@@ -51,6 +90,7 @@ export const registerAdmin = async (
       role,
       secret,
       twoFactor: false,
+      qrURL: qrCodeUrl,
     });
 
     await sendAdminRegistrationEmail({
@@ -91,7 +131,7 @@ export const loginAdmin = async (
     // Find the user by email
     const admin = await db.Admin.findOne({ where: { email } });
     if (!admin) {
-      return res.status(404).json({ message: "admin not found" });
+      return res.status(404).json({ message: "Admin not found" });
     }
 
     // Verify password
@@ -102,11 +142,10 @@ export const loginAdmin = async (
 
     const adminMail = admin.email;
     const secret = admin.secret;
-    // Generate the QR code
-    const otpauthUrl = otpauthURL(secret.base32, email);
-    const dataUrl = await QRCode.toDataURL(otpauthUrl);
+    const qrCodeUrl = admin.qrURL;
 
-    await sendTwoFactorSetupEmail(adminMail, secret.base32, dataUrl);
+    // Send email with QR code
+    await sendTwoFactorSetupEmail(adminMail, secret.base32, qrCodeUrl);
 
     // Generate a JWT token
     const token = jwt.sign({ email }, process.env.JWT_SECRET as string, {
@@ -121,6 +160,7 @@ export const loginAdmin = async (
         email: admin.email,
       },
       token,
+      qrCodeUrl,
     });
   } catch (error) {
     // Handle errors
@@ -151,8 +191,15 @@ export const verifyOTP = async (
       return res.status(404).send("User not found");
     }
 
+    // const secret = admin.secret.base32;
+    const otpauthUrl = admin.secret.otpauth_url; // Ensure `otpauth_url` is properly retrieved
+    const secret = extractSecretFromOtpauthUrl(otpauthUrl);
+
+    if (!secret) {
+      return res.status(500).send("Error extracting secret from otpauth_url");
+    }
     // Verify the OTP token using the user's secret
-    const isVerified = verifyToken(admin.secret.base32, token);
+    const isVerified = verifyToken(secret, token);
 
     // console.log(user.secret);
 

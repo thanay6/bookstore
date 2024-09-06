@@ -1,6 +1,7 @@
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import otpauth from "otpauth"; // Ensure you have otpauth package installed
+import * as URL from "url";
 
 interface SecretDetails {
   base32: string;
@@ -45,10 +46,50 @@ export const verifyToken = (secret: string, token: string) => {
   });
 };
 
-export const otpauthURL = (secret: string, username: string) => {
-  return speakeasy.otpauthURL({
-    secret,
-    label: "bookstore",
-    issuer: "YourApp",
-  });
+export const verifyQRToken = (secret: string, token: string): boolean => {
+  try {
+    return speakeasy.totp.verify({
+      secret,
+      encoding: "base32",
+      token,
+      window: 1, // Optional: Allows for a small time window to account for clock skew
+    });
+  } catch (error) {
+    console.error("Error verifying OTP token:", error);
+    return false;
+  }
 };
+
+export const generateQRCode = async (otpauthUrl: string): Promise<string> => {
+  try {
+    // Generate QR code as a Data URL
+    const dataUrl = await QRCode.toDataURL(otpauthUrl);
+    return dataUrl;
+  } catch (error) {
+    console.error("Error generating QR code:", error);
+    throw error;
+  }
+};
+
+export const extractSecretFromOtpauthUrl = (otpauthUrl: string): string => {
+  try {
+    const url = new URL.URL(otpauthUrl);
+    const secret = url.searchParams.get("secret") || "";
+    return secret;
+  } catch (error) {
+    console.error("Error extracting secret from otpauth_url:", error);
+    return "";
+  }
+};
+// export const otpauthURL = (secret: string, username: string) => {
+//   const qrcodeLink = secret.otpauth_url
+//   QRCode.toDataURL(qrcodeLink, (err, qrCode) => {
+//     if (err) console.error(err);
+//     else console.log(qrCode); // Displays QR code as a base64 encoded image
+//   });
+// return speakeasy.otpauthURL({
+//   secret,
+//   label: "bookstore",
+//   issuer: "YourApp",
+// });
+// };

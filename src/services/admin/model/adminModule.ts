@@ -9,6 +9,7 @@ interface AdminAttributes {
   role: "owner" | "manager"; // Restrict role to 'owner' or 'manager'
   secret: any; // JSON data, use 'any' or a more specific type if you have a schema
   twoFactor: Boolean;
+  qrURL: string;
 }
 
 // Define the optional attributes interface for the model
@@ -31,6 +32,7 @@ class Admin
   public role!: "owner" | "manager"; // Restrict role to 'owner' or 'manager'
   public secret!: any; // Define the JSON data
   public twoFactor!: boolean; // Use 'boolean' instead of 'Boolean'
+  public qrURL!: string;
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -70,6 +72,10 @@ const AdminModel = (sequelize: Sequelize): typeof Admin => {
       twoFactor: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
+      },
+      qrURL: {
+        type: DataTypes.STRING(128),
+        allowNull: true,
       },
     },
     {

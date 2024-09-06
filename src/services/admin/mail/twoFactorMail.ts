@@ -45,7 +45,7 @@ export const sendTwoFactorSetupEmail = async (
           <li>Open Google Authenticator or any compatible 2FA app on your mobile device.</li>
           <li>Click the button below to proceed with 2FA setup or enter the secret key manually:</li>
         </ol>
-        <p><strong>Secret Key:</strong> ${secret}</p>
+        <p><strong>Secret Key:</strong> ${secret}, ${redirectUrl}</p>
         <p>
           <a href="${redirectUrl}" style="
             display: inline-block;
