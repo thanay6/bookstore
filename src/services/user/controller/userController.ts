@@ -155,7 +155,7 @@ export const loginUser = async (
 
     // Generate a JWT token
     const token = jwt.sign(
-      { email: user.email }, // Assuming the User model has a 'role' attribute
+      { email: user.email, id: user.id }, // Assuming the User model has a 'role' attribute
       process.env.JWT_SECRET as string,
       { expiresIn: "1d" } // Token expires in 1 day
     );
