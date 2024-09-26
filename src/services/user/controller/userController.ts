@@ -25,23 +25,23 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION,
 });
 
-export const registerAdmin = async (
+export const registerUser = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password } = req.body;
 
     // Validate input
-    if (!username || !email || !password || !role) {
+    if (!username || !email || !password) {
       return res.status(400).json({
         message: "Username, email, and password are required",
       });
     }
 
-    // Check if Admin already exists
-    const existingAdmin = await db.Admin.findOne({ where: { email } });
-    if (existingAdmin) {
+    // Check if User already exists
+    const existingUser = await db.User.findOne({ where: { email } });
+    if (existingUser) {
       return res.status(400).json({
         message: "Email already exists",
         solution: "Change email address",
@@ -83,26 +83,30 @@ export const registerAdmin = async (
     // console.log("QR Code URL:", qrCodeUrl);
 
     // Create a new user
-    const admin = await db.Admin.create({
+    const user = await db.User.create({
       username,
       email,
       password: hashedPassword,
-      role,
       secret,
       twoFactor: false,
       qrURL: qrCodeUrl,
+      issuiedBooks: [], // Initialize as an empty array if no books are issued yet
     });
 
-    await sendAdminRegistrationEmail({
-      username: admin.username,
-      email: admin.email,
-      password: password, // You might want to be cautious about sending passwords in plain text
-      role: admin.role,
-    });
+    // await sendAdminRegistrationEmail({
+    //   username: user.username,
+    //   email: user.email,
+    //   password: password, // You might want to be cautious about sending passwords in plain text
+    // });
 
     return res.status(201).json({
-      message: "Admin registered successfully",
-      admin: { username: admin.username, email: admin.email }, // Return minimal user info
+      message: "User registered successfully",
+      user: {
+        username: user.username,
+        email: user.email,
+        screat: user.secret,
+        QRCode: user.qrURL,
+      }, // Return minimal user info
     });
   } catch (error) {
     // Log the error (consider logging to a file or service)
@@ -116,7 +120,7 @@ export const registerAdmin = async (
   }
 };
 
-export const loginAdmin = async (
+export const loginUser = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
@@ -129,40 +133,44 @@ export const loginAdmin = async (
     }
 
     // Find the user by email
-    const admin = await db.Admin.findOne({ where: { email } });
-    if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
+    const user = await db.User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Verify password
-    const isPasswordValid = await verifyPassword(password, admin.password);
+    const isPasswordValid = await verifyPassword(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    const adminMail = admin.email;
-    const secret = admin.secret;
-    const qrCodeUrl = admin.qrURL;
+    const userMail = user.email;
+    const secret = user.secret;
+    const qrCodeUrl = user.qrURL;
 
-    // Send email with QR code
-    await sendTwoFactorSetupEmail(adminMail, secret.base32, qrCodeUrl);
+    // Send email with QR code if two-factor is enabled
+    if (user.twoFactor) {
+      await sendTwoFactorSetupEmail(userMail, secret.base32, qrCodeUrl);
+    }
 
     // Generate a JWT token
     const token = jwt.sign(
-      { email: admin.email, role: admin.role },
+      { email: user.email }, // Assuming the User model has a 'role' attribute
       process.env.JWT_SECRET as string,
       { expiresIn: "1d" } // Token expires in 1 day
     );
 
     // Send a single response
     return res.status(200).json({
-      message: "2 Factor mail sent verify",
+      message: user.twoFactor
+        ? "2 Factor mail sent, verify"
+        : "Login successful",
       user: {
-        id: admin.id,
-        email: admin.email,
+        id: user.id,
+        email: user.email,
       },
       token,
-      qrCodeUrl,
+      qrCodeUrl: user.twoFactor ? qrCodeUrl : null, // Include QR only if 2FA is enabled
     });
   } catch (error) {
     // Handle errors
@@ -171,52 +179,5 @@ export const loginAdmin = async (
       message: "An error occurred during login",
       error: (error as Error).message ?? "Unknown error occurred",
     });
-  }
-};
-
-export const verifyOTP = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
-  try {
-    const { email, token } = req.body;
-
-    // Validate input
-    if (typeof email !== "string" || typeof token !== "string") {
-      return res.status(400).send("Invalid input");
-    }
-
-    // Find the user by email
-    const admin = await db.Admin.findOne({ where: { email } });
-
-    if (!admin) {
-      return res.status(404).send("User not found");
-    }
-
-    // const secret = admin.secret.base32;
-    const otpauthUrl = admin.secret.otpauth_url; // Ensure `otpauth_url` is properly retrieved
-    const secret = extractSecretFromOtpauthUrl(otpauthUrl);
-
-    if (!secret) {
-      return res.status(500).send("Error extracting secret from otpauth_url");
-    }
-    // Verify the OTP token using the user's secret
-    const isVerified = verifyToken(secret, token);
-
-    // console.log(user.secret);
-
-    if (isVerified) {
-      admin.twoFactor = true;
-      return res
-        .status(200)
-        .json({ message: "2FA verified successfully", startStatus: "started" });
-    } else {
-      // console.log(token);
-
-      return res.status(400).send("Invalid token");
-    }
-  } catch (err) {
-    console.error("Error verifying OTP:", err);
-    return res.status(500).send("Error verifying OTP");
   }
 };

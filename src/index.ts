@@ -5,7 +5,9 @@ import "./config/db_connection";
 
 //routers
 
-import userRoute from "./services/admin/routers/userRouter";
+import adminRoute from "./services/admin/routers/userRouter";
+import bookRoute from "./services/books/routers/bookRouter";
+import userRoute from "./services/user/routers/userRouter";
 
 dotenv.config();
 
@@ -16,7 +18,9 @@ app.use(express.json());
 
 //routers
 
-app.use("/api", userRoute);
+app.use("/api", adminRoute);
+app.use("/book", bookRoute);
+app.use("/user", userRoute);
 
 app.listen(PORT, () => {
   console.log(`server connected to ${PORT}`);

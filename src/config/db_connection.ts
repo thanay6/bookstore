@@ -1,5 +1,7 @@
 import { Sequelize } from "sequelize";
 import initAdminModel from "../services/admin/model/adminModule";
+import initBookModel from "../services/books/model/bookModel";
+import initUserModel from "../services/user/model/userModel";
 
 console.log(
   process.env.DB_DATABASE as string,
@@ -32,6 +34,8 @@ const db = {
   Sequelize,
   connection,
   Admin: initAdminModel(connection),
+  Book: initBookModel(connection),
+  User: initUserModel(connection),
 };
 
 // connection
