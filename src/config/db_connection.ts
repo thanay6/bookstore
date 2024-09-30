@@ -4,6 +4,7 @@ import initBookModel from "../services/books/model/bookModel";
 import initUserModel from "../services/user/model/userModel";
 import initCartModel from "../services/cart/model/cartModel";
 import initOrderModel from "../services/order/model/orderModel";
+import initPaymentModel from "../services/payments/model/paymentModel";
 
 console.log(
   process.env.DB_DATABASE as string,
@@ -40,6 +41,7 @@ const db = {
   User: initUserModel(connection),
   Cart: initCartModel(connection),
   Order: initOrderModel(connection),
+  Payment: initPaymentModel(connection),
 };
 
 // connection
