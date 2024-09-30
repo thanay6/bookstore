@@ -3,6 +3,7 @@ import initAdminModel from "../services/admin/model/adminModule";
 import initBookModel from "../services/books/model/bookModel";
 import initUserModel from "../services/user/model/userModel";
 import initCartModel from "../services/cart/model/cartModel";
+import initOrderModel from "../services/order/model/orderModel";
 
 console.log(
   process.env.DB_DATABASE as string,
@@ -38,11 +39,12 @@ const db = {
   Book: initBookModel(connection),
   User: initUserModel(connection),
   Cart: initCartModel(connection),
+  Order: initOrderModel(connection),
 };
 
-connection
-  .sync({ alter: true })
-  .then(() => console.log("Database tables synced."))
-  .catch((error: unknown) => console.error("Error syncing database:", error));
+// connection
+//   .sync({ alter: true })
+//   .then(() => console.log("Database tables synced."))
+//   .catch((error: unknown) => console.error("Error syncing database:", error));
 
 export default db;

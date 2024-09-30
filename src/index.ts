@@ -8,6 +8,8 @@ import "./config/db_connection";
 import adminRoute from "./services/admin/routers/userRouter";
 import bookRoute from "./services/books/routers/bookRouter";
 import userRoute from "./services/user/routers/userRouter";
+import cartRoute from "./services/cart/routers/cartRouter";
+import orderRoute from "./services/order/routers/orderRouter";
 
 dotenv.config();
 
@@ -21,6 +23,8 @@ app.use(express.json());
 app.use("/api", adminRoute);
 app.use("/book", bookRoute);
 app.use("/user", userRoute);
+app.use("/cart", cartRoute);
+app.use("/order", orderRoute);
 
 app.listen(PORT, () => {
   console.log(`server connected to ${PORT}`);

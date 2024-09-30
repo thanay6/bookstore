@@ -26,10 +26,10 @@ class Cart
   implements CartAttributes
 {
   public id!: number;
-  public userId!: number;
-  public productId!: string; // Unique identifier for the product
-  public quantity!: number; // Quantity of the product in the cart
-  public price!: number; // Price of the product
+  public userId!: number; // Ensure this is included
+  public productId!: string;
+  public quantity!: number;
+  public price!: number;
   public totalAmount!: number;
 
   // Timestamps
@@ -43,7 +43,6 @@ const CartModel = (sequelize: Sequelize): typeof Cart => {
     {
       id: {
         type: DataTypes.INTEGER.UNSIGNED,
-        autoIncrement: true,
         primaryKey: true,
       },
       userId: {
@@ -51,19 +50,19 @@ const CartModel = (sequelize: Sequelize): typeof Cart => {
         allowNull: false,
       },
       productId: {
-        type: DataTypes.STRING, // Unique identifier for the product
+        type: DataTypes.STRING,
         allowNull: false,
       },
       quantity: {
-        type: DataTypes.INTEGER, // Quantity of the product in the cart
+        type: DataTypes.INTEGER,
         allowNull: false,
       },
       price: {
-        type: DataTypes.DECIMAL(10, 2), // Price of the product
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
       },
       totalAmount: {
-        type: DataTypes.DECIMAL(10, 2), // Total cost of all items in the cart
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
       },
     },
@@ -71,7 +70,7 @@ const CartModel = (sequelize: Sequelize): typeof Cart => {
       sequelize,
       tableName: "carts",
       freezeTableName: true,
-      timestamps: true, // Automatically manage createdAt and updatedAt fields
+      timestamps: true,
     }
   );
 
